@@ -20,6 +20,13 @@ class Character:
         self.conversation_summary_file = self.get_latest_conversation_summary_file_path()
         self.conversation_summary = ''
 
+        # xVASynth emotional modifier values (0.0 - 1.0)
+        self.emValues = {
+            'emAngry': 0.0,
+            'emHappy': 0.0,
+            'emSad': 0.0,
+            'emSurprise': 0.0
+        }
 
     def get_latest_conversation_summary_file_path(self):
         """Get latest conversation summary by file name suffix"""
@@ -67,21 +74,47 @@ class Character:
     
 
     def create_context(self, prompt, location='Skyrim', time='12', active_characters=None, token_limit=4096, radiant_dialogue='false', trust_level=0, conversation_summary='', prompt_limit_pct=0.75):
+        # reset xVASynth emotional modifier values
+        self.reset_emValues()
+
         if self.relationship_rank == 0:
+            self.adjust_mood_by(-0.1)
             if trust_level < 1:
-                trust = 'a stranger'
+                trust = 'a suspicious stranger'
             elif trust_level < 10:
                 trust = 'an acquaintance'
+                self.adjust_mood_by(0.05)
             elif trust_level < 50:
                 trust = 'a friend'
+                self.adjust_mood_by(0.1)
             elif trust_level >= 50:
                 trust = 'a close friend'
+                self.adjust_mood_by(0.15)
         elif self.relationship_rank == 4:
             trust = 'a lover'
+            self.adjust_mood_by(0.3)
         elif self.relationship_rank > 0:
             trust = 'a friend'
+            self.adjust_mood_by(0.25)
         elif self.relationship_rank < 0:
             trust = 'an enemy'
+            if (self.relationship_rank < 0):
+                self.adjust_mood_by(-0.15)
+                trust += ' with which you wish to quickly end the conversation'
+            if (self.relationship_rank < -1):
+                self.adjust_mood_by(-0.05)
+                trust += '; which you distrust'
+            if (self.relationship_rank < -2):
+                trust += '; to who you do not want to help in any shape or form'
+                self.adjust_mood_by(-0.05)
+            if (self.relationship_rank < -3):
+                trust += '; who you would happily destroy if finally having the opportunity to do so'
+                self.adjust_mood_by(-0.10)
+            trust += ','
+
+        logging.info(f'Trust: {trust}')
+        logging.info(f'Emotional state: {self.emValues}')
+
         if len(conversation_summary) > 0:
             conversation_summary = f"Below is a summary for each of your previous conversations:\n\n{conversation_summary}"
 
@@ -268,3 +301,38 @@ class Character:
             logging.info(f"Conversation summary not saved. Not enough dialogue spoken.")
 
         return summary
+
+    # reset xVASynth emotional modifier values
+    def reset_emValues(self):
+        self.emValues = {
+            'emAngry': 0.0,
+            'emHappy': 0.0,
+            'emSad': 0.0,
+            'emSurprise': 0.0
+        }
+
+        if self.aggro:
+            logging.info(f'Player offended NPC: -0.2')
+            self.adjust_mood_by(-0.2)
+        if self.is_in_combat:
+            logging.info(f'Player is in combat with NPC: -0.4')
+            self.adjust_mood_by(-0.4)
+        # if self.is_in_combat:
+        #     logging.info(f'Player has weapon drawn: -0.05')
+        #     self.adjust_mood_by(-0.05)
+        # if self.is_in_combat:
+        #     logging.info(f'NPC has weapon drawn: -0.05')
+        #     self.adjust_mood_by(-0.05)
+
+    # changes Angry (negative value) And Happy (positive value); return final value
+    def adjust_mood_by(self, value):
+        logging.info(f'Adjust-mood: {value}')
+        emValue = self.emValues['emHappy'] - self.emValues['emAngry'] + value
+        logging.info(f'Post-mood: {emValue}')
+        if emValue > 0:
+            self.emValues['emHappy'] = min(emValue, 1)
+            self.emValues['emAngry'] = 0
+        else:
+            self.emValues['emAngry'] = min(abs(emValue), 1)
+            self.emValues['emHappy'] = 0
+        return emValue

@@ -51,7 +51,7 @@ class Synthesizer:
         self.setvocoder_url = 'http://127.0.0.1:8008/setVocoder'
     
 
-    def synthesize(self, voice, voice_folder, voiceline, aggro=0):
+    def synthesize(self, voice, voice_folder, voiceline, emValues={}):
         if voice != self.last_voice:
             self.change_voice(voice)
 
@@ -80,7 +80,7 @@ class Synthesizer:
 
         # Synthesize voicelines
         if len(phrases) == 1:
-            self._synthesize_line(phrases[0], final_voiceline_file, aggro)
+            self._synthesize_line(phrases[0], final_voiceline_file, emValues)
         else:
             # TODO: include batch synthesis for v3 models (batch not needed very often)
             if self.model_type != 'xVAPitch':
@@ -201,13 +201,17 @@ class Synthesizer:
     
 
     @utils.time_it
-    def _synthesize_line(self, line, save_path, aggro=0):
+    def _synthesize_line(self, line, save_path, emValues={}):
         pluginsContext = {}
-        # in combat
-        if (aggro == 1):
-            pluginsContext["mantella_settings"] = {
-                "emAngry": 0.6
+        if (len(emValues) > 0):
+            pluginsContext = {
+                'mantella_settings': emValues
             }
+            logging.info(f'Emotional values: {emValues}')
+            if (emValues['emAngry'] >= 0.35):
+                # replace dots with exclamation marks
+                line = line.replace('.', '!')
+
         data = {
             'pluginsContext': json.dumps(pluginsContext),
             'modelType': self.model_type,
