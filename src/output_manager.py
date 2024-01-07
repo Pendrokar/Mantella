@@ -230,7 +230,7 @@ class ChatManager:
                                     #TODO: or (any(key.split(' ')[0] == keyword_extraction for key in characters.active_characters))
                                     logging.info(f"Switched to {keyword_extraction}")
                                     self.active_character = characters.active_characters[keyword_extraction]
-                                    synthesizer.change_voice(self.active_character.voice_model)
+                                    synthesizer.change_voice(self.active_character.voice_model, self.active_character.voice_folder)
                                     # characters are mapped to say_line based on order of selection
                                     # taking the order of the dictionary to find which say_line to use, but it is bad practice to use dictionaries in this way
                                     self.character_num = list(characters.active_characters.keys()).index(keyword_extraction)
@@ -271,7 +271,7 @@ class ChatManager:
                             if action_taken == False:
                                 # Generate the audio and return the audio file path
                                 try:
-                                    audio_file = synthesizer.synthesize(self.active_character.voice_model, None, ' ' + sentence + ' ')
+                                    audio_file = synthesizer.synthesize(self.active_character.voice_model, self.active_character.voice_folder, ' ' + sentence + ' ')
                                 except Exception as e:
                                     logging.error(f"xVASynth Error: {e}")
 
@@ -303,7 +303,7 @@ class ChatManager:
             except Exception as e:
                 logging.error(f"LLM API Error: {e}")
                 error_response = "I can't find the right words at the moment."
-                audio_file = synthesizer.synthesize(self.active_character.voice_model, None, error_response)
+                audio_file = synthesizer.synthesize(self.active_character.voice_model, self.active_character.voice_folder, error_response)
                 self.save_files_to_voice_folders([audio_file, error_response])
                 logging.info('Retrying connection to API...')
                 time.sleep(5)

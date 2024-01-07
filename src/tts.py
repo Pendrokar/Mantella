@@ -22,7 +22,7 @@ class Synthesizer:
         self.times_checked_xvasynth = 0
 
         # check if xvasynth is running; otherwise try to run it
-        self.check_if_xvasynth_is_running()
+        # self.check_if_xvasynth_is_running()
 
         # voice models path
         self.model_path = f"{self.xvasynth_path}/resources/app/models/skyrim/"
@@ -45,6 +45,8 @@ class Synthesizer:
         self.model_type = ''
         self.base_speaker_emb = ''
 
+        self.tts_stream_url = config.tts_stream_url
+        self.tts_synthesize_url = config.tts_synthesize_url
         self.synthesize_url = 'http://127.0.0.1:8008/synthesize'
         self.synthesize_batch_url = 'http://127.0.0.1:8008/synthesize_batch'
         self.loadmodel_url = 'http://127.0.0.1:8008/loadModel'
@@ -53,7 +55,7 @@ class Synthesizer:
 
     def synthesize(self, voice, voice_folder, voiceline):
         if voice != self.last_voice:
-            self.change_voice(voice)
+            self.change_voice(voice, voice_folder)
 
         logging.info(f'Synthesizing voiceline: {voiceline}')
         phrases = self._split_voiceline(voiceline)
@@ -115,6 +117,7 @@ class Synthesizer:
 
         # if Debug Mode is on, play the audio file
         if (self.debug_mode == '1') & (self.play_audio_from_script == '1'):
+            logging.info(f"Playing audio through console: {final_voiceline_file}")
             winsound.PlaySound(final_voiceline_file, winsound.SND_FILENAME)
 
         return final_voiceline_file
@@ -202,6 +205,21 @@ class Synthesizer:
 
     @utils.time_it
     def _synthesize_line(self, line, save_path):
+
+        if (self.model_type == ''):
+            # external TTS
+            data = {
+                'speaker_wav': self.last_voice,
+                'text': line,
+                'language': self.language
+            }
+            response = requests.post(self.tts_synthesize_url, json=data)
+
+            logging.info(response)
+            with open(save_path, 'wb') as f:
+                f.write(response.content)
+            return
+
         data = {
             'pluginsContext': '{}',
             'modelType': self.model_type,
@@ -267,7 +285,19 @@ class Synthesizer:
             sys.exit(0)
     
     @utils.time_it
-    def change_voice(self, voice):
+    def change_voice(self, voice, voice_folder='xVA'):
+        if (
+            voice_folder == ''
+            or voice_folder == 'nan'
+            or voice_folder == 'xVA'
+        ):
+            self.last_voice = voice
+            self.model_type = ''
+
+            # use external TTS service
+            logging.info('External service uses multi-voice model.')
+            return
+
         logging.info('Loading voice model...')
 
         voice_path = f"{self.model_path}sk_{voice.lower().replace(' ', '')}"

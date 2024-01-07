@@ -69,7 +69,7 @@ try:
             continue
 
         character = character_manager.Character(character_info, language_info['language'], is_generic_npc)
-        synthesizer.change_voice(character.voice_model)
+        synthesizer.change_voice(character.voice_model, character.voice_folder)
         chat_manager.active_character = character
         chat_manager.character_num = 0
         characters.active_characters[character.name] = character

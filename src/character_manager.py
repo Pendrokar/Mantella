@@ -15,6 +15,8 @@ class Character:
         self.is_generic_npc = is_generic_npc
         self.in_game_voice_model = info['in_game_voice_model']
         self.voice_model = info['voice_model']
+        self.voice_folder = str(info['skyrim_voice_folder'])
+        logging.info(f"vf: {self.voice_folder}")
         self.conversation_history_file = f"data/conversations/{self.name}/{self.name}.json"
         self.conversation_summary_file = self.get_latest_conversation_summary_file_path()
         self.conversation_summary = ''
