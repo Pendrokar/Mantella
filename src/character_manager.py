@@ -11,6 +11,9 @@ class Character:
         self.name = info['name']
         self.bio = info['bio']
         self.is_in_combat = info['is_in_combat']
+        self.pc_has_weapon_drawn = info['pc_has_weapon_drawn'] == 'True'
+        self.has_weapon_draw = info['has_weapon_draw'] == 'True'
+        self.have_common_enemy_nearby = info['have_common_enemy_nearby'] == 'True'
         self.relationship_rank = info['in_game_relationship_level']
         self.language = language
         self.is_generic_npc = is_generic_npc
@@ -312,23 +315,66 @@ class Character:
         }
 
         if self.aggro:
-            logging.info(f'Player offended NPC: -0.2')
-            self.adjust_mood_by(-0.2)
+            self.adjust_mood_by(-0.2, 'Player offended NPC')
+
+            if (self.relationship_rank < -3):
+                # gleeful on opportunity to kill nemesis
+                self.adjust_mood_by(-0.025, 'Opportunity to kill nemesis')
+            elif (self.relationship_rank > 2):
+                # regretful aggro against friend
+                self.adjust_sadness_by(0.05, 'Sad action by friend')
+
         if self.is_in_combat:
-            logging.info(f'Player is in combat with NPC: -0.4')
-            self.adjust_mood_by(-0.4)
-        # if self.is_in_combat:
-        #     logging.info(f'Player has weapon drawn: -0.05')
-        #     self.adjust_mood_by(-0.05)
-        # if self.is_in_combat:
-        #     logging.info(f'NPC has weapon drawn: -0.05')
-        #     self.adjust_mood_by(-0.05)
+            self.adjust_mood_by(-0.4, 'Player is in combat with NPC')
+
+            if (self.relationship_rank < -3):
+                # gleeful on opportunity to kill nemesis
+                self.adjust_mood_by(-0.025, 'Opportunity to kill nemesis')
+            elif (self.relationship_rank > 2):
+                # regretful aggro against friend
+                self.adjust_sadness_by(0.1, 'Sad to battle friend')
+
+        # drawn weapons increase tension
+        if self.pc_has_weapon_drawn:
+            self.adjust_mood_by(-0.025, 'Player has weapon drawn')
+
+            # less tense if common enemy nearby
+            if (self.have_common_enemy_nearby):
+                self.adjust_mood_by(0.012, 'And both have common enemy nearby')
+            else:
+                # No common enemy nearby, distrustful action by PC
+                self.adjust_mood_by(-0.025, 'And both do not have common enemy nearby')
+
+                if (self.relationship_rank < -3):
+                    # gleeful on opportunity to kill nemesis
+                    self.adjust_mood_by(-0.025, 'Opportunity to kill nemesis')
+                elif (self.relationship_rank > 2):
+                    # regretful aggro against friend
+                    self.adjust_sadness_by(0.1, 'Sad action by friend')
+
+        # drawn weapons increase tension
+        if self.has_weapon_draw:
+            self.adjust_mood_by(-0.025, 'NPC has weapon drawn')
+
+            # less tense if common enemy nearby
+            if (self.have_common_enemy_nearby):
+                self.adjust_mood_by(0.012, 'And both have common enemy nearby')
+            else:
+                # No common enemy nearby, tense situation
+                self.adjust_mood_by(-0.025, 'And both do not have common enemy nearby')
+                if (self.relationship_rank < -3):
+                    # gleeful on opportunity to kill nemesis
+                    self.adjust_mood_by(-0.025, 'Opportunity to kill nemesis')
+                elif (self.relationship_rank > 2):
+                    # regretful aggro against friend
+                    self.adjust_sadness_by(0.1, 'Sad action by friend')
 
     # changes Angry (negative value) And Happy (positive value); return final value
-    def adjust_mood_by(self, value):
-        logging.info(f'Adjust-mood: {value}')
+    def adjust_mood_by(self, value, info=''):
+        if (info):
+            logging.debug(f'{info}, mood: {value}')
+
         emValue = self.emValues['emHappy'] - self.emValues['emAngry'] + value
-        logging.info(f'Post-mood: {emValue}')
         if emValue > 0:
             self.emValues['emHappy'] = min(emValue, 1)
             self.emValues['emAngry'] = 0
@@ -336,3 +382,12 @@ class Character:
             self.emValues['emAngry'] = min(abs(emValue), 1)
             self.emValues['emHappy'] = 0
         return emValue
+
+    # changes sadness
+    def adjust_sadness_by(self, value, info=''):
+        if (info):
+            logging.debug(f'{info}, sadness: {value}')
+
+        self.emValues['emSad'] += value
+        self.emValues['emSad'] = min(value, 1)
+        return value

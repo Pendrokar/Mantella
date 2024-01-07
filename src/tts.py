@@ -51,7 +51,7 @@ class Synthesizer:
         self.setvocoder_url = 'http://127.0.0.1:8008/setVocoder'
     
 
-    def synthesize(self, voice, voice_folder, voiceline, emValues={}):
+    def synthesize(self, voice, voice_folder, voiceline, ttsSettings={}):
         if voice != self.last_voice:
             self.change_voice(voice)
 
@@ -80,7 +80,7 @@ class Synthesizer:
 
         # Synthesize voicelines
         if len(phrases) == 1:
-            self._synthesize_line(phrases[0], final_voiceline_file, emValues)
+            self._synthesize_line(phrases[0], final_voiceline_file, ttsSettings)
         else:
             # TODO: include batch synthesis for v3 models (batch not needed very often)
             if self.model_type != 'xVAPitch':
@@ -201,16 +201,21 @@ class Synthesizer:
     
 
     @utils.time_it
-    def _synthesize_line(self, line, save_path, emValues={}):
+    def _synthesize_line(self, line, save_path, ttsSettings={}):
         pluginsContext = {}
-        if (len(emValues) > 0):
+        if (len(ttsSettings) > 0):
             pluginsContext = {
-                'mantella_settings': emValues
+                'mantella_settings': ttsSettings
             }
-            logging.info(f'Emotional values: {emValues}')
-            if (emValues['emAngry'] >= 0.35):
-                # replace dots with exclamation marks
-                line = line.replace('.', '!')
+            logging.info(f'Emotional values: {ttsSettings}')
+
+            try:
+                if (ttsSettings['exclaim']):
+                    logging.info('Replacing dots with exclamation marks.')
+                    # replace dots with exclamation marks
+                    line = line.replace('.', '!')
+            except:
+                pass
 
         data = {
             'pluginsContext': json.dumps(pluginsContext),

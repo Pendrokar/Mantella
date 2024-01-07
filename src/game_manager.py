@@ -30,13 +30,21 @@ class GameStateManager:
                     time.sleep(delay_between_attempts)
         return None
     
-
     def load_data_when_available(self, text_file_name, text):
+        slept = False
         while text == '':
             with open(f'{self.game_path}/{text_file_name}.txt', 'r', encoding='utf-8') as f:
                 text = f.readline().strip()
-            # decrease stress on CPU while waiting for file to populate
-            time.sleep(0.01)
+                if text != '':
+                    # skip sleep
+                    break
+
+                # decrease stress on CPU while waiting for file to populate
+                time.sleep(0.01)
+                if slept:
+                    logging.debug(f'Waiting for data in {self.game_path}/{text_file_name}.txt')
+                else:
+                    slept = True
         return text
     
 
@@ -63,7 +71,8 @@ class GameStateManager:
         self.write_game_info('_mantella_actor_is_enemy', 'False')
         self.write_game_info('_mantella_actor_is_in_combat', 'False')
 
-        self.write_game_info('_mantella_actor_relationship', '')
+        # Skyrim relation indicator of the NPC with the player (-4 to 4)
+        self.write_game_info('_mantella_actor_relationship', '0')
 
         self.write_game_info('_mantella_character_selection', 'True')
 
@@ -81,7 +90,21 @@ class GameStateManager:
 
         self.write_game_info('_mantella_player_input', '')
 
+        # The voice model used by the character
+        self.write_game_info('_mantella_actor_voice', '')
+
+        # NPC fights player
         self.write_game_info('_mantella_aggro', '')
+
+        # Player has weapons drawn
+        self.write_game_info('_mantella_pc_has_weapon_drawn', 'False')
+
+        # NPC has weapons drawn
+        self.write_game_info('_mantella_npc_has_weapon_draw', 'False')
+
+        # PC & NPC have common enemy nearby
+        self.write_game_info('_mantella_have_common_enemy_nearby', 'False')
+
 
         self.write_game_info('_mantella_radiant_dialogue', 'False')
 
@@ -286,13 +309,18 @@ class GameStateManager:
 
         in_game_time = self.load_data_when_available('_mantella_in_game_time', in_game_time)
 
-        actor_voice_model = self.load_data_when_available('_mantella_actor_voice', '')
-        actor_voice_model_name = actor_voice_model.split('<')[1].split(' ')[0]
-        character_info['in_game_voice_model'] = actor_voice_model_name
+        if debug_mode == '1':
+            character_info['in_game_voice_model'] = character_info['voice_model']
+        else:
+            actor_voice_model = self.load_data_when_available('_mantella_actor_voice', '')
+            actor_voice_model_name = actor_voice_model.split('<')[1].split(' ')[0]
+            character_info['in_game_voice_model'] = actor_voice_model_name
 
         # Is Player in combat with NPC
         is_in_combat = self.load_data_when_available('_mantella_actor_is_enemy', '')
         character_info['is_in_combat'] = is_in_combat
+        if (is_in_combat):
+            self.write_game_info('_mantella_in_game_events', '*You are attacking the player. This is either because you are an enemy or the player has attacked you first.*')
 
         actor_relationship_rank = self.load_data_when_available('_mantella_actor_relationship', '')
         try:
@@ -300,6 +328,10 @@ class GameStateManager:
         except:
             actor_relationship_rank = 0
         character_info['in_game_relationship_level'] = actor_relationship_rank
+
+        character_info['pc_has_weapon_drawn'] = self.load_data_when_available('_mantella_pc_has_weapon_drawn', '')
+        character_info['has_weapon_draw'] = self.load_data_when_available('_mantella_npc_has_weapon_draw', '')
+        character_info['have_common_enemy_nearby'] = self.load_data_when_available('_mantella_have_common_enemy_nearby', '')
 
         return character_info, location, in_game_time, is_generic_npc
     

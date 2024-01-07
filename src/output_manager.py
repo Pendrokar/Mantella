@@ -273,10 +273,25 @@ class ChatManager:
                                     sentence = ''
                                     action_taken = True
 
+                            if (
+                                self.active_character.pc_has_weapon_drawn
+                                and self.active_character.has_weapon_draw
+                                and not self.active_character.have_common_enemy_nearby
+                            ):
+                                logging.info('PC & NPC weapons drawn without common enemy. Replacing dots with exclamation marks!')
+                                # replace dots with exclamation marks
+                                sentence = sentence.replace('.', '!')
+                                sentence = sentence.replace('?', '?!')
+
+                            # TTS related settings
+                            ttsSettings = {
+                                **self.active_character.emValues
+                            }
+
                             if action_taken == False:
                                 # Generate the audio and return the audio file path
                                 try:
-                                    audio_file = synthesizer.synthesize(self.active_character.voice_model, None, ' ' + sentence + ' ', self.active_character.emValues)
+                                    audio_file = synthesizer.synthesize(self.active_character.voice_model, None, ' ' + sentence + ' ', ttsSettings)
                                 except Exception as e:
                                     logging.error(f"xVASynth Error: {e}")
 
