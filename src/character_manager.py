@@ -314,25 +314,25 @@ class Character:
             'emSurprise': 0.0
         }
 
-        if self.aggro:
-            self.adjust_mood_by(-0.2, 'Player offended NPC')
+        # if self.aggro:
+        #     self.adjust_mood_by(-0.2, 'Player offended NPC')
 
-            if (self.relationship_rank < -3):
-                # gleeful on opportunity to kill nemesis
-                self.adjust_mood_by(-0.025, 'Opportunity to kill nemesis')
-            elif (self.relationship_rank > 2):
-                # regretful aggro against friend
-                self.adjust_sadness_by(0.05, 'Sad action by friend')
+        #     if (self.relationship_rank < -3):
+        #         # gleeful on opportunity to kill nemesis
+        #         self.adjust_mood_by(-0.025, 'Opportunity to kill nemesis')
+        #     elif (self.relationship_rank > 2):
+        #         # regretful aggro against friend
+        #         self.adjust_sadness_by(0.05, 'Sad action by friend')
 
         if self.is_in_combat:
-            self.adjust_mood_by(-0.4, 'Player is in combat with NPC')
+            self.adjust_mood_by(-0.4, 'NPC is in combat')
 
-            if (self.relationship_rank < -3):
-                # gleeful on opportunity to kill nemesis
-                self.adjust_mood_by(-0.025, 'Opportunity to kill nemesis')
-            elif (self.relationship_rank > 2):
-                # regretful aggro against friend
-                self.adjust_sadness_by(0.1, 'Sad to battle friend')
+            # if (self.relationship_rank < -3):
+            #     # gleeful on opportunity to kill nemesis
+            #     self.adjust_mood_by(-0.025, 'Opportunity to kill nemesis')
+            # elif (self.relationship_rank > 2):
+            #     # regretful aggro against friend
+            #     self.adjust_sadness_by(0.1, 'Sad to battle friend')
 
         # drawn weapons increase tension
         if self.pc_has_weapon_drawn:
@@ -345,12 +345,12 @@ class Character:
                 # No common enemy nearby, distrustful action by PC
                 self.adjust_mood_by(-0.025, 'And both do not have common enemy nearby')
 
-                if (self.relationship_rank < -3):
-                    # gleeful on opportunity to kill nemesis
-                    self.adjust_mood_by(-0.025, 'Opportunity to kill nemesis')
-                elif (self.relationship_rank > 2):
-                    # regretful aggro against friend
-                    self.adjust_sadness_by(0.1, 'Sad action by friend')
+                # if (self.relationship_rank < -3):
+                #     # gleeful on opportunity to kill nemesis
+                #     self.adjust_mood_by(-0.025, 'Opportunity to kill nemesis')
+                # elif (self.relationship_rank > 2):
+                #     # regretful aggro against friend
+                #     self.adjust_sadness_by(0.1, 'Sad action by friend')
 
         # drawn weapons increase tension
         if self.has_weapon_draw:
