@@ -98,6 +98,7 @@ https://github.com/art-from-the-machine/Mantella#issues-qa
             self.pace = float(config['Speech']['pace'])
             self.use_cleanup = int(config['Speech']['use_cleanup'])
             self.use_sr = int(config['Speech']['use_sr'])
+            self.pc_voice = config['Speech']['player_voice']
 
             self.remove_mei_folders = config['Cleanup']['remove_mei_folders']
 

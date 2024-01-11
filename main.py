@@ -1,4 +1,5 @@
 import traceback
+import winsound
 import src.tts as tts
 import src.stt as stt
 import src.chat_response as chat_response
@@ -173,10 +174,20 @@ try:
 
                     transcript_cleaned = utils.clean_text(transcribed_text)
 
+                    # if pc voice chosen, play the audio file
+                    if (
+                        transcript_cleaned != ''
+                        and (config.pc_voice != '')
+                    ):
+                        audio_file = synthesizer.synthesize(config.pc_voice, None, ' ' + transcript_cleaned + ' ')
+                        winsound.PlaySound(audio_file, winsound.SND_FILENAME)
+                        # sleep; finished playback
+
                     # if multi NPC conversation, add "Player:" to beginning of output to clarify to the LLM who is speaking
                     if (characters.active_character_count() > 1) and (radiant_dialogue != "true"):
                         transcribed_text = 'Player: ' + transcribed_text
                     # add in-game events to player's response
+
                     transcribed_text = game_state_manager.update_game_events(transcribed_text)
                     logging.info(f"Text passed to NPC: {transcribed_text}")
 
