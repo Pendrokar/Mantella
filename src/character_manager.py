@@ -82,7 +82,7 @@ class Character:
         elif self.relationship_rank < 0:
             trust = 'an enemy'
         if len(conversation_summary) > 0:
-            conversation_summary = f"Below is a summary for each of your previous conversations:\n\n{conversation_summary}"
+            conversation_summary = f"{conversation_summary}"
 
         time_group = utils.get_time_group(time)
 
@@ -223,8 +223,7 @@ class Character:
             logging.info(f'Token limit of conversation summaries reached ({len(encoding.encode(conversation_summaries))} / {summary_limit} tokens). Creating new summary file...')
             while True:
                 try:
-                    prompt = f"You are tasked with summarizing the conversation history between {self.name} (the assistant) and the player (the user) / other characters. These conversations take place in Skyrim. "\
-                        f"Each paragraph represents a conversation at a new point in time. Please summarize these conversations into a single paragraph in {self.language}."
+                    prompt = f"Summarize the series of conversations between {self.name} (the assistant) and the player/other characters into one concise paragraph. Each existing paragraph represents a different conversation in Skyrim at distinct time points. Focus on the key themes and interactions in {self.language}, merging them into a unified summary."
                     long_conversation_summary = self.summarize_conversation(conversation_summaries, llm, prompt)
                     break
                 except:
@@ -250,7 +249,7 @@ class Character:
         if len(conversation) > 5:
             conversation = conversation[3:-2] # drop the context (0) hello (1,2) and "Goodbye." (-2, -1) lines
             if prompt == None:
-                prompt = f"You are tasked with summarizing the conversation between {self.name} (the assistant) and the player (the user) / other characters. These conversations take place in Skyrim. It is not necessary to comment on any mixups in communication such as mishearings. Text contained within asterisks state in-game events. Please summarize the conversation into a single paragraph in {self.language}."
+                prompt = f"Summarize the dialogue between {self.name} and the player, focusing on the core conversation and key interpersonal aspects. Exclude any moments where misunderstandings are corrected, such as misinterpretations by {self.name} and subsequent clarifications by the player. Keep the summary centered on the main content of the dialogue, capturing its essence, tone, and significant points in a single, coherent paragraph in {self.language}, akin to summarizing a real-world conversation."
             context = [{"role": "system", "content": prompt}]
             summary, _ = chat_response.chatgpt_api(f"{conversation}", context, llm)
 
