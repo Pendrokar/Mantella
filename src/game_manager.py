@@ -98,16 +98,15 @@ class GameStateManager:
         self.write_game_info('_mantella_aggro', '')
 
         # Player has weapons drawn
-        self.write_game_info('_mantella_pc_has_weapon_drawn', 'False')
+        self.write_game_info('_mantella_player_has_weapon_drawn', 'False')
 
         # NPC has weapons drawn
-        self.write_game_info('_mantella_npc_has_weapon_draw', 'False')
+        self.write_game_info('_mantella_actor_has_weapon_drawn', 'False')
 
         # PC & NPC have common enemy nearby
         self.write_game_info('_mantella_have_common_enemy_nearby', 'False')
 
 
-        self.write_game_info('_mantella_radiant_dialogue', 'False')
 
         return character_name, character_id, location, in_game_time
     
@@ -327,11 +326,21 @@ class GameStateManager:
             actor_voice_model_name = actor_voice_model.split('<')[1].split(' ')[0]
             character_info['in_game_voice_model'] = actor_voice_model_name
 
+        try:
+            # "try" due to generic characters missing this info
+            character_info['race'] = character_info['race']
+            character_info['species'] = character_info['species']
+        except:
+            character_info['race'] = ''
+            character_info['species'] = ''
+            pass
+
+        # Is NPC in combat
+        is_in_combat = (self.load_data_when_available('_mantella_actor_is_in_combat', '').lower() == 'true')
         # Is Player in combat with NPC
-        is_in_combat = self.load_data_when_available('_mantella_actor_is_enemy', '')
-        character_info['is_in_combat'] = is_in_combat
-        if (is_in_combat):
-            self.write_game_info('_mantella_in_game_events', '*You are attacking the player. This is either because you are an enemy or the player has attacked you first.*')
+        is_enemy = (self.load_data_when_available('_mantella_actor_is_enemy', '').lower() == 'true')
+        character_info['player_is_enemy'] = (is_in_combat or is_enemy)
+        character_info['is_in_combat'] = (is_in_combat or is_enemy)
 
         actor_relationship_rank = self.load_data_when_available('_mantella_actor_relationship', '')
         try:
@@ -340,9 +349,9 @@ class GameStateManager:
             actor_relationship_rank = 0
         character_info['in_game_relationship_level'] = actor_relationship_rank
 
-        character_info['pc_has_weapon_drawn'] = self.load_data_when_available('_mantella_pc_has_weapon_drawn', '')
-        character_info['has_weapon_draw'] = self.load_data_when_available('_mantella_npc_has_weapon_draw', '')
-        character_info['have_common_enemy_nearby'] = self.load_data_when_available('_mantella_have_common_enemy_nearby', '')
+        character_info['player_has_weapon_drawn'] = self.load_data_when_available('_mantella_player_has_weapon_drawn', '').lower() == 'true'
+        character_info['has_weapon_drawn'] = self.load_data_when_available('_mantella_actor_has_weapon_drawn', '').lower() == 'true'
+        character_info['have_common_enemy_nearby'] = self.load_data_when_available('_mantella_have_common_enemy_nearby', '').lower() == 'true'
 
         return character_info, location, in_game_time, is_generic_npc
     
@@ -359,9 +368,9 @@ class GameStateManager:
         formatted_in_game_events_lines = ['*{}*'.format(line.strip()) for line in in_game_events_lines]
         in_game_events = '\n'.join(formatted_in_game_events_lines)
 
-        is_in_combat = self.load_data_when_available('_mantella_actor_is_enemy', '')
-        if is_in_combat.lower() == 'true':
-            in_game_events = in_game_events + '\n*You are attacking the player. This is either because you are an enemy or the player has attacked you first.*'
+        # is_in_combat = self.load_data_when_available('_mantella_actor_is_enemy', '')
+        # if is_in_combat.lower() == 'true':
+        #     in_game_events = in_game_events + '\n*You are attacking the player. This is either because you are an enemy or the player has attacked you first.*'
 
         if len(in_game_events) > 0:
             logging.info(f'In-game events since previous exchange:\n{in_game_events}')

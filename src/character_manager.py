@@ -11,13 +11,16 @@ class Character:
         self.name = info['name']
         self.bio = info['bio']
         self.is_in_combat = info['is_in_combat']
-        self.pc_has_weapon_drawn = info['pc_has_weapon_drawn'] == 'True'
-        self.has_weapon_draw = info['has_weapon_draw'] == 'True'
-        self.have_common_enemy_nearby = info['have_common_enemy_nearby'] == 'True'
+        self.pc_is_enemy = info['player_is_enemy']
+        self.pc_has_weapon_drawn = info['player_has_weapon_drawn']
+        self.has_weapon_drawn = info['has_weapon_drawn']
+        self.have_common_enemy_nearby = info['have_common_enemy_nearby']
         self.relationship_rank = info['in_game_relationship_level']
         self.language = language
         self.is_generic_npc = is_generic_npc
+        self.race = info['race']
         self.in_game_voice_model = info['in_game_voice_model']
+        self.species = info['species']
         self.voice_model = info['voice_model']
         self.conversation_history_file = f"data/conversations/{self.name}/{self.name}.json"
         self.conversation_summary_file = self.get_latest_conversation_summary_file_path()
@@ -80,44 +83,6 @@ class Character:
         # reset xVASynth emotional modifier values
         self.reset_emValues()
 
-        if self.relationship_rank == 0:
-            self.adjust_mood_by(-0.1)
-            if trust_level < 1:
-                trust = 'a suspicious stranger'
-            elif trust_level < 10:
-                trust = 'an acquaintance'
-                self.adjust_mood_by(0.05)
-            elif trust_level < 50:
-                trust = 'a friend'
-                self.adjust_mood_by(0.1)
-            elif trust_level >= 50:
-                trust = 'a close friend'
-                self.adjust_mood_by(0.15)
-        elif self.relationship_rank == 4:
-            trust = 'a lover'
-            self.adjust_mood_by(0.3)
-        elif self.relationship_rank > 0:
-            trust = 'a friend'
-            self.adjust_mood_by(0.25)
-        elif self.relationship_rank < 0:
-            trust = 'an enemy'
-            if (self.relationship_rank < 0):
-                self.adjust_mood_by(-0.15)
-                trust += ' with which you wish to quickly end the conversation'
-            if (self.relationship_rank < -1):
-                self.adjust_mood_by(-0.05)
-                trust += '; which you distrust'
-            if (self.relationship_rank < -2):
-                trust += '; to who you do not want to help in any shape or form'
-                self.adjust_mood_by(-0.05)
-            if (self.relationship_rank < -3):
-                trust += '; who you would happily destroy if finally having the opportunity to do so'
-                self.adjust_mood_by(-0.10)
-            trust += ','
-
-        logging.info(f'Trust: {trust}')
-        logging.info(f'Emotional state: {self.emValues}')
-
         if len(conversation_summary) > 0:
             conversation_summary = f"Below is a summary for each of your previous conversations:\n\n{conversation_summary}"
 
@@ -126,6 +91,55 @@ class Character:
         keys = list(active_characters.keys())
 
         if len(keys) == 1: # Single NPC prompt
+
+            # relationship with player
+            if self.relationship_rank == 0:
+                self.adjust_mood_by(-0.05)
+                if trust_level < 1:
+                    trust = 'a suspicious stranger'
+                elif trust_level < 10:
+                    trust = 'an acquaintance'
+                    self.adjust_mood_by(0.075)
+                elif trust_level < 50:
+                    trust = 'a friend'
+                    self.adjust_mood_by(0.1)
+                elif trust_level >= 50:
+                    trust = 'a close friend'
+                    self.adjust_mood_by(0.125)
+            elif self.relationship_rank == 4:
+                trust = 'a lover'
+                self.adjust_mood_by(0.3)
+            elif self.relationship_rank > 0:
+                trust = 'a friend'
+                self.adjust_mood_by(0.2)
+            elif self.relationship_rank < 0:
+                trust = 'an enemy'
+                if (self.relationship_rank < 0):
+                    self.adjust_mood_by(-0.15)
+                    trust += ' with which you wish to quickly end the conversation'
+                if (self.relationship_rank < -1):
+                    self.adjust_mood_by(-0.05)
+                    trust += '; which you distrust'
+
+                    # regretful aggro against friend
+                    self.adjust_sadness_by(0.1, 'Unamused by talking to enemy')
+                if (self.relationship_rank < -2):
+                    trust += '; to who you do not help in any shape or form'
+                    self.adjust_mood_by(-0.05)
+                if (self.relationship_rank < -3):
+                    trust += '; who you would happily attack and kill without mercy if opportunity rises to do so'
+                    self.adjust_mood_by(-0.10)
+                trust += ','
+
+            logging.info(f'Trust: {trust}')
+            logging.info(f'Emotional state: {self.emValues}')
+
+            if self.is_in_combat:
+                conversation_summary += f' *Attention, you, "{self.name}", are currently engaged in deadly combat'
+                if self.pc_is_enemy:
+                    conversation_summary += ' with the player'
+                conversation_summary += '!* *The player starts speaks.*'
+
             character_desc = prompt.format(
                 name=self.name, 
                 bio=self.bio, 
@@ -324,54 +338,65 @@ class Character:
         #         # regretful aggro against friend
         #         self.adjust_sadness_by(0.05, 'Sad action by friend')
 
-        if self.is_in_combat:
-            self.adjust_mood_by(-0.4, 'NPC is in combat')
-
-            # if (self.relationship_rank < -3):
-            #     # gleeful on opportunity to kill nemesis
-            #     self.adjust_mood_by(-0.025, 'Opportunity to kill nemesis')
-            # elif (self.relationship_rank > 2):
-            #     # regretful aggro against friend
-            #     self.adjust_sadness_by(0.1, 'Sad to battle friend')
-
         # drawn weapons increase tension
+        # weapon drawn by the player
         if self.pc_has_weapon_drawn:
             self.adjust_mood_by(-0.025, 'Player has weapon drawn')
 
             # less tense if common enemy nearby
+            if (not self.have_common_enemy_nearby):
+                if (self.relationship_rank < -3):
+                    # gleeful on opportunity to kill nemesis
+                    self.adjust_mood_by(-0.05, 'Opportunity to kill nemesis')
+                elif (self.relationship_rank > 2):
+                    # regretful aggro against friend
+                    self.adjust_sadness_by(0.1, 'NPC sad that player friend draws weapon')
+
+        # weapon drawn by NPC
+        if self.has_weapon_drawn:
+            self.adjust_mood_by(-0.025, 'NPC has weapon drawn')
+
+        # if both have weapons drawn
+        if (
+            self.pc_has_weapon_drawn
+            and self.has_weapon_drawn
+        ):
+            # less tense if common enemy nearby
             if (self.have_common_enemy_nearby):
                 self.adjust_mood_by(0.012, 'And both have common enemy nearby')
-            else:
-                # No common enemy nearby, distrustful action by PC
+            elif (self.relationship_rank < 2):
+                # No common enemy nearby, unfriendly PC and tense situation
                 self.adjust_mood_by(-0.025, 'And both do not have common enemy nearby')
-
-                # if (self.relationship_rank < -3):
-                #     # gleeful on opportunity to kill nemesis
-                #     self.adjust_mood_by(-0.025, 'Opportunity to kill nemesis')
+                if (self.relationship_rank < -3):
+                    # gleeful on opportunity to kill nemesis
+                    self.adjust_mood_by(-0.025, 'Opportunity to kill nemesis')
                 # elif (self.relationship_rank > 2):
                 #     # regretful aggro against friend
                 #     self.adjust_sadness_by(0.1, 'Sad action by friend')
 
-        # drawn weapons increase tension
-        if self.has_weapon_draw:
-            self.adjust_mood_by(-0.025, 'NPC has weapon drawn')
+        if self.is_in_combat:
+            self.adjust_mood_by(-0.2, 'NPC is in combat')
 
-            # less tense if common enemy nearby
-            if (self.have_common_enemy_nearby):
-                self.adjust_mood_by(0.012, 'And both have common enemy nearby')
-            else:
-                # No common enemy nearby, tense situation
-                self.adjust_mood_by(-0.025, 'And both do not have common enemy nearby')
+            if self.pc_is_enemy:
+                self.adjust_mood_by(-0.2, 'NPC is in combat with player')
                 if (self.relationship_rank < -3):
                     # gleeful on opportunity to kill nemesis
                     self.adjust_mood_by(-0.025, 'Opportunity to kill nemesis')
                 elif (self.relationship_rank > 2):
                     # regretful aggro against friend
-                    self.adjust_sadness_by(0.1, 'Sad action by friend')
+                    self.adjust_sadness_by(0.1, 'Sad to battle friend')
+
+                # assume NPC is fleeing if only the player has weapons drawn
+                if (
+                    self.pc_has_weapon_drawn
+                    and not self.has_weapon_drawn
+                ):
+                    self.adjust_sadness_by(0.4, 'Yielding')
+                    self.adjust_surprise_by(0.15, 'Yielding')
 
     # changes Angry (negative value) And Happy (positive value); return final value
     def adjust_mood_by(self, value, info=''):
-        if (info):
+        if (info != ''):
             logging.debug(f'{info}, mood: {value}')
 
         emValue = self.emValues['emHappy'] - self.emValues['emAngry'] + value
@@ -385,9 +410,18 @@ class Character:
 
     # changes sadness
     def adjust_sadness_by(self, value, info=''):
-        if (info):
+        if (info != ''):
             logging.debug(f'{info}, sadness: {value}')
 
         self.emValues['emSad'] += value
         self.emValues['emSad'] = min(value, 1)
+        return value
+
+    # changes surprise
+    def adjust_surprise_by(self, value, info=''):
+        if (info != ''):
+            logging.debug(f'{info}, surprise: {value}')
+
+        self.emValues['surprise'] += value
+        self.emValues['surprise'] = min(value, 1)
         return value

@@ -96,6 +96,7 @@ https://github.com/art-from-the-machine/Mantella#issues-qa
 
             self.xvasynth_process_device = config['Speech']['tts_process_device']
             self.pace = float(config['Speech']['pace'])
+            self.pad_with_whitespaces = int(config['Speech']['pad_with_whitespaces'])
             self.use_cleanup = int(config['Speech']['use_cleanup'])
             self.use_sr = int(config['Speech']['use_sr'])
 

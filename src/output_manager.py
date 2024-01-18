@@ -252,7 +252,8 @@ class ChatManager:
                                         logging.info(f"The player offended the NPC")
                                         self.game_state_manager.write_game_info('_mantella_aggro', '1')
                                         self.active_character.is_in_combat = 1
-                                        self.active_character.adjust_mood_by(-0.6)
+                                        self.active_character.pc_is_enemy = 1
+                                        self.active_character.adjust_mood_by(-0.2)
                                     else:
                                         logging.info(f"Experimental features disabled. Please set experimental_features = 1 in config.ini to enable the Offended feature")
                                     full_reply += sentence
@@ -263,8 +264,9 @@ class ChatManager:
                                         logging.info(f"The player made up with the NPC")
                                         self.game_state_manager.write_game_info('_mantella_aggro', '0')
                                         self.active_character.is_in_combat = 0
+                                        self.active_character.pc_is_enemy = 0
                                         # mood not fully restored
-                                        self.active_character.adjust_mood_by(0.5)
+                                        self.active_character.adjust_mood_by(0.15)
                                     else:
                                         logging.info(f"Experimental features disabled. Please set experimental_features = 1 in config.ini to enable the Forgiven feature")
                                     full_reply += sentence
@@ -281,25 +283,76 @@ class ChatManager:
                                     action_taken = True
 
                             if (
-                                self.active_character.pc_has_weapon_drawn
-                                and self.active_character.has_weapon_draw
-                                and not self.active_character.have_common_enemy_nearby
+                                self.active_character.pc_is_enemy
+                                and self.active_character.is_in_combat
+
+                                # both sides have weapons drawn
+                                # self.active_character.pc_has_weapon_drawn
+                                # and self.active_character.has_weapon_drawn
+
+                                # # NPC is not combat with anyone other than player
+                                # and not (
+                                #     not self.active_character.pc_is_enemy
+                                #     and self.active_character.is_in_combat
+                                # )
+
+                                # and not self.active_character.have_common_enemy_nearby
                             ):
-                                logging.info('PC & NPC weapons drawn without common enemy. Replacing dots with exclamation marks!')
-                                # replace dots with exclamation marks
-                                sentence = sentence.replace('.', '!')
-                                sentence = sentence.replace('?', '?!')
+                                logging.info('PC & NPC weapons drawn without common enemy around. Replacing dots with exclamation marks!')
+                                # replace dots with exclamation marks, as LLMs rarely use these or even multiple of them
+                                if (self.active_character.emValues["emAngry"] > 0.5):
+                                    logging.info('Triple exclamation marks!!! (very high anger)')
+                                    sentence = sentence.replace('!!', '!').replace('!!', '!')
+                                    sentence = sentence.replace('!', '!!!')
+                                    sentence = sentence.replace('.', '!!')
+                                    sentence = sentence.replace('?', '?!!')
+                                elif (self.active_character.emValues["emAngry"] > 0.4):
+                                    logging.info('Double exclamation marks!! (high anger)')
+                                    sentence = sentence.replace('!!', '!').replace('!!', '!')
+                                    sentence = sentence.replace('!', '!!')
+                                    sentence = sentence.replace('.', '!!')
+                                    sentence = sentence.replace('?', '?!!')
+                                else:
+                                    sentence = sentence.replace('.', '!')
+                                    sentence = sentence.replace('?', '?!')
 
                             # TTS related settings
                             ttsSettings = {
-                                **self.active_character.emValues
+                                "mantella_settings": self.active_character.emValues
                             }
+
+                            # animals speak telepathically; add reverb
+                            if (
+                                self.active_character.species == 'Chicken'
+                                or self.active_character.species == 'Horse'
+                                or self.active_character.species == 'Dog'
+                                or self.active_character.species == 'Cow'
+                            ):
+                                logging.debug(f"Reverb settings set")
+                                ttsSettings["ffmpeg"] = {
+                                    "hz": 22050,
+                                    "padEnd": 1500,
+                                    "reverb": True,
+                                    "boostdB": 10,
+                                }
+
+                            if (self.active_character.species == 'Dog'):
+                                # overexcited default dogs
+                                if (self.active_character.race == 'Dog'):
+                                    ttsSettings["split_voicelines"] = False
+                                    ttsSettings["pace"] = 0.6
+                                    # ttsSettings["mantella_settings"]["emHappy"] += 0.15
+                                    # ttsSettings["mantella_settings"]["emSurprise"] += 0.15
+
+                                # Husky dogs
+                                if (self.active_character.race == 'Husky'):
+                                    ttsSettings["pace"] = 0.85
 
                             if action_taken == False:
                                 # Generate the audio and return the audio file path
                                 try:
-                                    logging.info(f"'DEBUGERFR Before audio_file{sentence}")
-                                    audio_file = synthesizer.synthesize(self.active_character.voice_model, None, ' ' + sentence + ' ', self.ttsSettings)
+                                    logging.debug(f"Before audio_file: {sentence}")
+                                    audio_file = synthesizer.synthesize(self.active_character.voice_model, None, ' ' + sentence + ' ', ttsSettings)
                                 except Exception as e:
                                     logging.error(f"xVASynth Error: {e}")
 

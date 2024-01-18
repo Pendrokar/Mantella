@@ -195,11 +195,27 @@ try:
 
                 # check if NPC is in combat to change their voice tone (if one on one conversation)
                 if characters.active_character_count() == 1:
-                    aggro = game_state_manager.load_data_when_available('_mantella_actor_is_in_combat', '').lower()
-                    if aggro == 'true':
-                        chat_manager.active_character.is_in_combat = 1
-                    else:
-                        chat_manager.active_character.is_in_combat = 0
+                    is_in_combat = (game_state_manager.load_data_when_available('_mantella_actor_is_in_combat', '').lower() == 'true')
+                    pc_is_enemy = (game_state_manager.load_data_when_available('_mantella_actor_is_enemy', '').lower() == 'true')
+                    # status change
+                    if (is_in_combat != chat_manager.active_character.is_in_combat):
+                        if (is_in_combat):
+                            logging.info(f"NPC goes into combat")
+                        else:
+                            logging.info(f"NPC goes out of combat")
+
+                        # reset xVASynth emotional modifier values
+                        chat_manager.active_character.reset_emValues()
+                    if (pc_is_enemy != chat_manager.active_character.pc_is_enemy):
+                        if (pc_is_enemy):
+                            logging.info(f"NPC goes into combat with player")
+                        else:
+                            logging.info(f"NPC goes out of combat with player")
+
+                        # reset xVASynth emotional modifier values
+                        chat_manager.active_character.reset_emValues()
+                    chat_manager.active_character.is_in_combat = (is_in_combat or pc_is_enemy)
+                    chat_manager.active_character.pc_is_enemy = (pc_is_enemy or pc_is_enemy)
 
                 # get character's response
                 if transcribed_text:

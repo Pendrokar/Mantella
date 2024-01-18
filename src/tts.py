@@ -32,6 +32,7 @@ class Synthesizer:
         self.language = config.language
 
         self.pace = config.pace
+        self.pad_with_whitespaces = config.pad_with_whitespaces
         self.use_sr = bool(config.use_sr)
         self.use_cleanup = bool(config.use_cleanup)
 
@@ -56,7 +57,17 @@ class Synthesizer:
             self.change_voice(voice)
 
         logging.info(f'Synthesizing voiceline: {voiceline}')
-        phrases = self._split_voiceline(voiceline)
+
+        doSplitVoicelines = True
+        try:
+            doSplitVoicelines = ttsSettings['split_voicelines']
+        except:
+            pass
+
+        if (doSplitVoicelines):
+            phrases = self._split_voiceline(voiceline)
+        else:
+            phrases = [voiceline]
 
         # make voice model folder if it doesn't already exist
         if not os.path.exists(f"{self.output_path}/voicelines/{self.last_voice}"):
@@ -202,12 +213,12 @@ class Synthesizer:
 
     @utils.time_it
     def _synthesize_line(self, line, save_path, ttsSettings={}):
+        pace = self.pace
         pluginsContext = {}
         if (len(ttsSettings) > 0):
             pluginsContext = {
-                'mantella_settings': ttsSettings
+                **ttsSettings
             }
-            logging.info(f'Emotional values: {ttsSettings}')
 
             try:
                 if (ttsSettings['exclaim']):
@@ -217,11 +228,23 @@ class Synthesizer:
             except:
                 pass
 
+            try:
+                pace = float(ttsSettings['pace'])
+            except:
+                pass
+            # if (ttsSettings['wpad']):
+            # if (True):
+            #     line = line.center(len(line) + 2)
+            logging.info(f'TTS settings: {ttsSettings}')
+
+        if (self.pad_with_whitespaces):
+            line = line.center(len(line) + 2)
+
         data = {
             'pluginsContext': json.dumps(pluginsContext),
             'modelType': self.model_type,
             'sequence': line,
-            'pace': self.pace,
+            'pace': min(1.0, max(pace, 0.1)),
             'outfile': save_path,
             'vocoder': 'n/a',
             'base_lang': self.language,
